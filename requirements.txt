@@ -1,0 +1,5 @@
+cython
+ipython
+pytest
+pytest-sugar
+pytest-cov

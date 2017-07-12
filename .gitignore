@@ -1,0 +1,7 @@
+__pycache__
+*.so
+build
+prj.egg-info
+.cache
+.coverage
+htmlcov

@@ -1,0 +1,19 @@
+First example
+pyximport
+performance comparison
+cython -a
+Refcount etc
+
+Abstract vs Concretete C Python API layers
+
+Adding C structures, what Cython doesn't support
+
+Low level tricks with Python string:
+inplace conctenation
+writers
+
+cygdb
+
+
+Python C Extensions a hard: examples from Caribbean PyCon and
+futures/tasks from asyncio.

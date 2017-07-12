@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="ru" >
+  <head>
+    <title>Open Source Library</title>
+    <meta name="description" content="">
+    <meta name="author" content="Andrew Svetlov">
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/custom.css" id="theme">
+
+    <!-- Code syntax highlighting -->
+    <link rel="stylesheet" href="lib/css/custom.css">
+
+    <!-- Printing and PDF exports -->
+    <script>
+     var link = document.createElement( 'link' );
+     link.rel = 'stylesheet';
+     link.type = 'text/css';
+     link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+     document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+
+    <!--[if lt IE 9]>
+    <script src="lib/js/html5shiv.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section>
+          <h1>Optimizing Python code</h1>
+          <h2>With Cython extensions</h2>
+          <p>
+            Andrew Svetlov
+            <p>
+              <small>andrew.svetlov@gmail.com</small><br>
+              <small>http://asvetlov.github.io/optimization-rimini-2017/</small>
+            </p>
+          </p>
+        </section>
+        <section>
+          <h2>Prerequisites</h2>
+          <ul>
+            <li>There is Python code</li>
+            <li class="fragment">Profiler points on bottleneck</li>
+            <li class="fragment">The code is algorithmically perfect<br>
+              <i>O(N) vs O(log(N))</i></li>
+          </ul>
+        </section>
+<!-- ------------------------------------------ -->
+        <section>
+          <h1>1. Naive Cythonizing</h1>
+        </section>
+        <section>
+          <pre><code>
+def py(a, b):
+    return a + b
+
+import timeit
+print(timeit.timeit('py(1, 2)', 'from __main__ import py'))
+          </code></pre>
+          <p>python</p>
+          <p>0.070 sec</p>
+        </section>
+        <section>
+          <pre><code>
+def cy(a, b):
+    return a + b
+          </code></pre>
+          <p>mod1.pyx</p>
+        </section>
+        <section>
+          <pre><code>
+import pyximport; pyximport.install()
+from mod1 import cy
+
+print(timeit.timeit('cy(1, 2)', 'from __main__ import cy'))
+          </code></pre>
+          <p>cython without types</p>
+          <p>0.046 sec</p>
+          <p><i>was 0.070 sec</i></p>
+        </section>
+        <section>
+          <pre><code>
+def cy2(int a, int b):
+    return a + b
+          </code></pre>
+          <p>mod1.pyx with types</p>
+          <p>0.046 sec</p>
+          <p><i>was 0.046 and 0.070 sec</i></p>
+        </section>
+<!-- ------------------------ -->
+        <section>
+          <h1>2. Better example</h1>
+        </section>
+        <section>
+          <pre><code>
+def pysum(start, step, count):
+    ret = start
+    for i in range(count):
+        ret += step
+    return ret
+
+
+print(timeit.timeit('pysum(0, 1, 100)', 'from __main__ import pysum'))
+          </code></pre>
+          <p>python</p>
+          <p>2.772 sec</p>
+        </section>
+        <section>
+          <pre><code>
+def cysum(start, step, count):
+    ret = start
+    for i in range(count):
+        ret += step
+    return ret
+          </code></pre>
+          <p>mod2.pyx</p>
+          <p>cython without types</p>
+          <p>1.177 sec</p>
+          <p><i>was 2.772</i></p>
+        </section>
+        <section>
+          <pre><code>
+def cysum2(float start, float step, int count):
+    cdef float ret
+    ret = start
+    for i in range(count):
+        ret += step
+    return ret
+          </code></pre>
+          <p>mod2.pyx</p>
+          <p>cython with types</p>
+          <p>0.222 sec</p>
+          <p><i>was 1.177 sec and 2.772</i></p>
+        </section>
+        <section>
+          <pre><code>
+$ cython -a mod2.pyx
+$ xdg-open mod2.html
+          </code></pre>
+          <a href="https://asvetlov.github.io/optimization-kaunas-2017/mod2.html">HTML output</a>
+        </section>
+        <!-- ----------------------------------------------- -->
+        <section>
+          <h1>Data structures</h1>
+        </section>
+        <section>
+          <pre><code>
+def pyappend(lst, item, count):
+    for i in range(count):
+        lst.append(item)
+
+
+print(timeit.timeit('pyappend([], 1, 100)', 'from __main__ import pyappend'))
+          </code></pre>
+          <p>python</p>
+          <p>6.602 sec</p>
+        </section>
+        <section>
+          <pre><code>
+def cyappend(lst, item, count):
+    for i in range(count):
+        lst.append(item)
+          </code></pre>
+          <p>mod3.pyx</p>
+          <p>cython without types</p>
+          <p>1.388 sec</p>
+          <p><i>was 6.602</i></p>
+        </section>
+        <section>
+          <pre><code>
+def cyappend2(list lst, item, int count):
+    for i in range(count):
+        lst.append(item)
+          </code></pre>
+          <p>mod3.pyx</p>
+          <p>cython with types</p>
+          <p>0.799 sec</p>
+          <p><i>was 1.388 sec and 6.602</i></p>
+        </section>
+        <section>
+          <h1>Abstract vs Concrete types</h1>
+          <ul>
+            <li>PyObject_SetAttr</li>
+            <li>PySequence_GetItem</li>
+            <li>... vs ...</li>
+            <li>PyDict_GetItem</li>
+            <li>PyList_GetItem</li>
+            <li>PyTuple_GetItem</li>
+          </ul>
+        </section>
+        <section>
+          <pre><code>
+$ cython -a mod3.pyx
+$ xdg-open mod3.html
+          </code></pre>
+          <a href="https://asvetlov.github.io/optimization-kaunas-2017/mod3.html">HTML output</a>
+        </section>
+        <!-- ----------------------------- -->
+        <section>
+          <h1>Compiling</h1>
+        </section>
+        <section>
+          <h2>Project structure</h2>
+          <pre><code>
+.
+├── prj
+│   ├── __init__.py
+│   ├── _mod.pyx
+├── setup.py
+└── tests
+    └── test_prj.py
+          </code></pre>
+        </section>
+        <section>
+          <pre><code>
+def _append(list lst, item, int count):
+    for i in range(count):
+        lst.append(item)
+          </code></pre>
+          <p>_mod.pyx</p>
+        </section>
+        <section>
+          <pre><code>
+try:
+    from ._mod import _append
+except ImportError:
+    _append = None
+
+def _pyappend(lst, item, count):
+    for i in range(count):
+        lst.append(item)
+
+
+if _append is not None:
+    append = _append
+else:
+    append = _pyappend
+          </code></pre>
+          <p>__init__.py</p>
+        </section>
+        <section>
+          <pre><code>
+from Cython.Build import cythonize
+from setuptools import setup
+
+setup(name='prj',
+      version='0.0.1',
+      packages=['prj'],
+      ext_modules=cythonize('prj/_mod.pyx'))
+          </code></pre>
+          <p>setup.py</p>
+          <pre><code>
+$ pip install -e .
+Obtaining file:///home/andrew/projects/optimization-vilnius-2017/prj
+Installing collected packages: prj
+  Running setup.py develop for prj
+Successfully installed prj
+          </code></pre>
+        </section>
+        <section>
+          <pre><code>
+from unittest import TestCase
+from prj import _pyappend
+try:
+    from prj import _append
+except ImportError:
+    _append = None
+
+class BasetTestMixin:
+    def func(self, *args):
+        raise NotImplementedError
+
+    def test_append(self):
+        lst = [1, 2]
+        self.func(lst, 3, 2)
+        self.assertEqual([1, 2, 3, 3], lst)
+          </code></pre>
+          <p>tests/test_prj.py</p>
+        </section>
+        <section>
+          <pre><code>
+class TestPython(TestCase, BasetTestMixin):
+    def func(self, *args):
+        _pyappend(*args)
+
+if _append is not None:
+    class TestCython(TestCase, BasetTestMixin):
+        def func(self, *args):
+            _append(*args)
+          </code></pre>
+          <p>tests/test_prj.py</p>
+        </section>
+        <section>
+          <pre><code>
+# python -m unittest discover tests
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+          </code></pre>
+        </section>
+        <section>
+          <h1>Questions?</h1>
+          <p>
+            Andrew Svetlov
+            <p>
+              <small>http://asvetlov.blogspot.com</small><br>
+              <small>andrew.svetlov@gmail.com</small><br>
+              <small>http://asvetlov.github.io/optimization-kaunas-2017/</small>
+            </p>
+          </p>
+        </section>
+      </div>
+    </div>
+
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.js"></script>
+
+    <script>
+     // Full list of configuration options available at:
+     // https://github.com/hakimel/reveal.js#configuration
+     Reveal.initialize({
+       controls: true,
+       progress: true,
+       history: true,
+       center: true,
+       slideNumber: true,
+       transition: 'slide', // none/fade/slide/convex/concave/zoom
+       // Optional reveal.js plugins
+       dependencies: [
+         { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+         { src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+         { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+         { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+         { src: 'plugin/zoom-js/zoom.js', async: true },
+         { src: 'plugin/notes/notes.js', async: true }
+       ]
+     });
+    </script>
+
+  </body>
+</html>
